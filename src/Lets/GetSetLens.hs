@@ -144,8 +144,10 @@ modify ::
   -> (b -> b)
   -> a
   -> a
-modify =
-  error "todo: modify"
+modify l f e =
+  let curr = get l e
+  in set l e (f curr)
+--  error "todo: modify"
 
 -- | An alias for @modify@.
 (%~) ::
@@ -174,8 +176,8 @@ infixr 4 %~
   -> b
   -> a
   -> a
-(.~) =
-  error "todo: (.~)"
+(.~) l b a = set l a b
+  
 
 infixl 5 .~
 
@@ -195,8 +197,11 @@ fmodify ::
   -> (b -> f b)
   -> a
   -> f a
-fmodify =
-  error "todo: fmodify"
+fmodify (Lens s g) f a =
+  let b = g a
+      fb = f b
+  in s a <$> fb
+--  error "todo: fmodify"
 
 -- |
 --
@@ -211,8 +216,9 @@ fmodify =
   -> f b
   -> a
   -> f a
-(|=) =
-  error "todo: (|=)"
+(|=) (Lens s _) fb a =
+  s a <$> fb
+--  error "todo: (|=)"
 
 infixl 5 |=
 
@@ -228,8 +234,8 @@ infixl 5 |=
 -- prop> let types = (x :: Int, y :: String) in setsetLaw fstL (x, y) z
 fstL ::
   Lens (x, y) x
-fstL =
-  error "todo: fstL"
+fstL = Lens (\(_,y) x' -> (x',y)) fst
+
 
 -- |
 --
@@ -243,8 +249,8 @@ fstL =
 -- prop> let types = (x :: Int, y :: String) in setsetLaw sndL (x, y) z
 sndL ::
   Lens (x, y) y
-sndL =
-  error "todo: sndL"
+sndL = Lens (\(x,_) y' -> (x,y')) snd
+
 
 -- |
 --
@@ -269,8 +275,11 @@ mapL ::
   Ord k =>
   k
   -> Lens (Map k v) (Maybe v)
-mapL =
-  error "todo: mapL"
+mapL k = Lens s g
+ where s m (Just v) = Map.insert k v m
+       s m Nothing  = Map.delete k m
+       
+       g m          = Map.lookup k m 
 
 -- |
 --
@@ -295,8 +304,12 @@ setL ::
   Ord k =>
   k
   -> Lens (Set k) Bool
-setL =
-  error "todo: setL"
+setL k = Lens s g
+ where s a True  = Set.insert k a
+       s a False = Set.delete k a
+       
+       g a       = Set.member k a
+       
 
 -- |
 --
@@ -309,8 +322,19 @@ compose ::
   Lens b c
   -> Lens a b
   -> Lens a c
-compose =
-  error "todo: compose"
+compose (Lens s1 g1) (Lens s2 g2) =
+--   s1 :: b -> c -> b
+--   g1 :: b -> c
+--   s2 :: a -> b -> a
+--   g2 :: a -> b  
+  Lens (s3) (g3)
+   where g3 = g1 . g2
+       -- s3 :: a -> c -> a
+         s3 = \a c ->
+           let b  = g2 a
+               b' = s1 b c
+           in s2 a b'
+
 
 -- | An alias for @compose@.
 (|.) ::
@@ -331,8 +355,8 @@ infixr 9 |.
 -- 4
 identity ::
   Lens a a
-identity =
-  error "todo: identity"
+identity = Lens (\_ y -> y) id
+
 
 -- |
 --
@@ -345,8 +369,8 @@ product ::
   Lens a b
   -> Lens c d
   -> Lens (a, c) (b, d)
-product =
-  error "todo: product"
+product (Lens s1 g1) (Lens s2 g2) =
+  Lens (\(a,c) (b,d) -> (s1 a b, s2 c d)) (\(a,b) -> (g1 a, g2 b))
 
 -- | An alias for @product@.
 (***) ::
