@@ -201,7 +201,7 @@ fmodify (Lens s g) f a =
   let b = g a
       fb = f b
   in s a <$> fb
---  error "todo: fmodify"
+
 
 -- |
 --
@@ -218,7 +218,7 @@ fmodify (Lens s g) f a =
   -> f a
 (|=) (Lens s _) fb a =
   s a <$> fb
---  error "todo: (|=)"
+
 
 infixl 5 |=
 
@@ -399,8 +399,14 @@ choice ::
   Lens a x
   -> Lens b x
   -> Lens (Either a b) x
-choice =
-  error "todo: choice"
+choice (Lens sa ga) (Lens sb gb)=
+  Lens s g
+  where s (Left a)  x = Left $ sa a x  -- bimap (flip sa x) (flip sb x) v 
+        s (Right b) x = Right $ sb b x
+
+        g (Left a) = ga a
+        g (Right b) = gb b
+        
 
 -- | An alias for @choice@.
 (|||) ::
@@ -487,8 +493,8 @@ addressL =
 getSuburb ::
   Person
   -> String
-getSuburb =
-  error "todo: getSuburb"
+getSuburb  = get (compose suburbL addressL)
+
 
 -- |
 --
@@ -501,8 +507,8 @@ setStreet ::
   Person
   -> String
   -> Person
-setStreet =
-  error "todo: setStreet"
+setStreet = set (streetL |. addressL)
+
 
 -- |
 --
@@ -514,8 +520,8 @@ setStreet =
 getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
-getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+getAgeAndCountry = get (ageL *** countryL)
+
 
 -- |
 --
@@ -526,8 +532,8 @@ getAgeAndCountry =
 -- (Person 28 "Mary" (Address "83 Mary Ln" "Maryland" (Locality "Some Other City" "Western Mary" "Maristan")),Address "15 Fred St" "Fredville" (Locality "Mary Mary" "Western Mary" "Maristan"))
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
-setCityAndLocality =
-  error "todo: setCityAndLocality"
+setCityAndLocality = set (cityL |. localityL |. addressL *** localityL)
+--  error "todo: setCityAndLocality"
   
 -- |
 --
@@ -539,8 +545,8 @@ setCityAndLocality =
 getSuburbOrCity ::
   Either Address Locality
   -> String
-getSuburbOrCity =
-  error "todo: getSuburbOrCity"
+getSuburbOrCity = get (suburbL ||| cityL) 
+
 
 -- |
 --
@@ -553,8 +559,8 @@ setStreetOrState ::
   Either Person Locality
   -> String
   -> Either Person Locality
-setStreetOrState =
-  error "todo: setStreetOrState"
+setStreetOrState = set (streetL |. addressL ||| stateL)
+--  error "todo: setStreetOrState"
 
 -- |
 --
@@ -566,5 +572,5 @@ setStreetOrState =
 modifyCityUppercase ::
   Person
   -> Person
-modifyCityUppercase =
-  error "todo: modifyCityUppercase"
+modifyCityUppercase = (cityL |. localityL |. addressL) %~ (toUpper <$>)
+-- modify (cityL |. localityL |. addressL) (toUpper <$>)
