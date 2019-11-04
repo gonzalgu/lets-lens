@@ -55,6 +55,7 @@ import Data.Set(Set)
 import qualified Data.Set as Set(insert, delete, member)
 import Lets.Data(Store(Store), Person(Person), Locality(Locality), Address(Address))
 import Prelude hiding (product)
+import Data.Bifunctor
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -370,7 +371,14 @@ compose ::
   Lens b c      -- Lens (\b -> Store c b) == Lens (\b -> Store (\c -> b) c)
   -> Lens a b   -- Lens (\a -> Store b a) == Lens (\a -> Store (\b -> a) b)
   -> Lens a c   -- Lens (\a -> Store c a) == Lens (\a -> Store (\c -> a) c)
-compose l1 l2 = undefined
+compose l1 l2 =
+  let bToc = get l1
+      aTob = get l2
+      aToc = bToc . aTob      
+      set1 x = set l1 (aTob x)
+      set2 x = set l2 x
+                        
+  in Lens (\a -> Store (\c -> set2 a $ set1 a c) (aToc a))
   --error "todo: compose"
 
 -- | An alias for @compose@.
@@ -392,8 +400,8 @@ infixr 9 |.
 -- 4
 identity ::
   Lens a a
-identity =
-  error "todo: identity"
+identity = Lens (\x -> Store id x)
+  --error "todo: identity"
     
 -- |
 --
@@ -406,8 +414,8 @@ product ::
   Lens a b
   -> Lens c d
   -> Lens (a, c) (b, d)
-product =
-  error "todo: product"
+product l1 l2 = Lens (\(a,c) -> Store (\(b,d) -> (set l1 a b, set l2 c d)) (get l1 a, get l2 c))
+  
 
 -- | An alias for @product@.
 (***) ::
@@ -436,8 +444,10 @@ choice ::
   Lens a x
   -> Lens b x
   -> Lens (Either a b) x
-choice =
-  error "todo: choice"
+choice l1 l2 =
+  Lens (\e -> Store (\x -> bimap (\a -> set l1 a x)(\b -> set l2 b x) e) (either (get l1) (get l2) e))
+  
+  
 
 -- | An alias for @choice@.
 (|||) ::
