@@ -80,27 +80,31 @@ mapS ::
   (a -> b)
   -> Store s a
   -> Store s b
-mapS =
-  error "todo: mapS"
+mapS f (Store s x) =
+  Store (f . s) x
+ -- error "todo: mapS"
 
 duplicateS ::
-  Store s a
-  -> Store s (Store s a)
-duplicateS =
-  error "todo: duplicateS"
+  Store s a                  -- Store (s -> a) a
+  -> Store s (Store s a)     -- Store (s -> Store (s -> a) a) (Store (s -> a) a)
+duplicateS st@(Store _ x) =
+  Store (\_ -> st) x 
+
 
 extendS ::
   (Store s a -> b)
   -> Store s a
   -> Store s b
-extendS =
-  error "todo: extendS"
+extendS f st@(Store s x) =
+  let b = f st
+  in Store (\_ -> b) x
+--  error "todo: extendS"
 
 extractS ::
   Store s a
   -> a
-extractS =
-  error "todo: extractS"
+extractS (Store s x) = s x
+--  error "todo: extractS"
 
 ----
 
@@ -193,8 +197,11 @@ modify ::
   -> (b -> b)
   -> a
   -> a
-modify =
-  error "todo: modify"
+modify l f x =
+  let v = get l x
+      v' = f v
+   in set l x v'
+--  error "todo: modify"
 
 -- | An alias for @modify@.
 (%~) ::
@@ -244,8 +251,11 @@ fmodify ::
   -> (b -> f b)
   -> a
   -> f a
-fmodify =
-  error "todo: fmodify"
+fmodify l f x =
+  let v = get l x
+      v' = f v
+  in set l x <$> v'
+--  error "todo: fmodify"
   
 -- |
 --
@@ -260,8 +270,8 @@ fmodify =
   -> f b
   -> a
   -> f a
-(|=) =
-  error "todo: (|=)"
+(|=) l fb x = set l x <$> fb
+
 
 infixl 5 |=
 
@@ -277,8 +287,7 @@ infixl 5 |=
 -- prop> let types = (x :: Int, y :: String) in setsetLaw fstL (x, y) z
 fstL ::
   Lens (x, y) x
-fstL =
-  error "todo: fstL"
+fstL = Lens (\(x,y) -> Store (\v -> (v,y)) x)
 
 -- |
 --
@@ -293,7 +302,8 @@ fstL =
 sndL ::
   Lens (x, y) y
 sndL =
-  error "todo: sndL"
+  Lens (\(x,y) -> Store (\v -> (x,v)) y)
+
 
 -- |
 --
@@ -318,8 +328,9 @@ mapL ::
   Ord k =>
   k
   -> Lens (Map k v) (Maybe v)
-mapL =
-  error "todo: mapL"
+mapL k =
+  Lens (\m -> Store (maybe (Map.delete k m) (\v -> Map.insert k v m))  (Map.lookup k m))
+
 
 -- |
 --
@@ -344,8 +355,10 @@ setL ::
   Ord k =>
   k
   -> Lens (Set k) Bool
-setL =
-  error "todo: setL"
+setL k = Lens (\s -> Store (f s) (Set.member k s))
+  where f s True  = Set.insert k s
+        f s False = Set.delete k s
+        
 
 -- |
 --
