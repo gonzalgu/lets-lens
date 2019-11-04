@@ -230,8 +230,8 @@ infixr 4 %~
   -> b
   -> a
   -> a
-(.~) =
-  error "todo: (.~)"
+(.~) l b a = set l a b 
+
 
 infixl 5 .~
 
@@ -255,8 +255,7 @@ fmodify l f x =
   let v = get l x
       v' = f v
   in set l x <$> v'
---  error "todo: fmodify"
-  
+
 -- |
 --
 -- >>> fstL |= Just 3 $ (7, "abc")
@@ -368,11 +367,11 @@ setL k = Lens (\s -> Store (f s) (Set.member k s))
 -- >>> set (compose fstL sndL) ("abc", (7, "def")) 8
 -- ("abc",(8,"def"))
 compose ::
-  Lens b c
-  -> Lens a b
-  -> Lens a c
-compose =
-  error "todo: compose"
+  Lens b c      -- Lens (\b -> Store c b) == Lens (\b -> Store (\c -> b) c)
+  -> Lens a b   -- Lens (\a -> Store b a) == Lens (\a -> Store (\b -> a) b)
+  -> Lens a c   -- Lens (\a -> Store c a) == Lens (\a -> Store (\c -> a) c)
+compose l1 l2 = undefined
+  --error "todo: compose"
 
 -- | An alias for @compose@.
 (|.) ::
