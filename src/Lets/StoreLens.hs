@@ -534,8 +534,8 @@ addressL =
 getSuburb ::
   Person
   -> String
-getSuburb =
-  error "todo: getSuburb"
+getSuburb = get $ suburbL |. addressL
+  
 
 -- |
 --
@@ -548,8 +548,8 @@ setStreet ::
   Person
   -> String
   -> Person
-setStreet =
-  error "todo: setStreet"
+setStreet = set $ streetL |. addressL
+  --error "todo: setStreet"
 
 -- |
 --
@@ -561,8 +561,8 @@ setStreet =
 getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
-getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+getAgeAndCountry = get $ ageL *** countryL
+  --error "todo: getAgeAndCountry"
 
 -- |
 --
@@ -573,8 +573,8 @@ getAgeAndCountry =
 -- (Person 28 "Mary" (Address "83 Mary Ln" "Maryland" (Locality "Some Other City" "Western Mary" "Maristan")),Address "15 Fred St" "Fredville" (Locality "Mary Mary" "Western Mary" "Maristan"))
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
-setCityAndLocality =
-  error "todo: setCityAndLocality"
+setCityAndLocality = set $ (cityL |. localityL  |. addressL *** localityL)
+  --error "todo: setCityAndLocality"
   
 -- |
 --
@@ -586,8 +586,8 @@ setCityAndLocality =
 getSuburbOrCity ::
   Either Address Locality
   -> String
-getSuburbOrCity =
-  error "todo: getSuburbOrCity"
+getSuburbOrCity = get (suburbL ||| cityL)
+  --error "todo: getSuburbOrCity"
 
 -- |
 --
@@ -600,8 +600,8 @@ setStreetOrState ::
   Either Person Locality
   -> String
   -> Either Person Locality
-setStreetOrState =
-  error "todo: setStreetOrState"
+setStreetOrState = set (streetL |. addressL ||| stateL)
+  --error "todo: setStreetOrState"
 
 -- |
 --
@@ -614,4 +614,5 @@ modifyCityUppercase ::
   Person
   -> Person
 modifyCityUppercase =
-  error "todo: modifyCityUppercase"
+  ((cityL |. localityL |. addressL) %~ (toUpper <$>))
+  --error "todo: modifyCityUppercase"
