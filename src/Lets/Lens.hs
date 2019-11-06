@@ -111,8 +111,8 @@ fmapT ::
   (a -> b)
   -> t a
   -> t b
-fmapT f = getIdentity . traverse (Identity . f) 
-  
+fmapT f = getIdentity . traverse (Identity . f)
+
 
 -- | Let's refactor out the call to @traverse@ as an argument to @fmapT@.
 over :: 
@@ -120,7 +120,7 @@ over ::
   -> (a -> b)
   -> s
   -> t
-over f g s = getIdentity $ f (Identity . g) s 
+over f g s = getIdentity $ f (Identity . g) s
   --error "todo: over"
 
 -- | Here is @fmapT@ again, passing @traverse@ to @over@.
@@ -149,7 +149,7 @@ sets f g s = Identity $ f (getIdentity . g) s
 mapped ::
   Functor f =>
   Set (f a) (f b) a b -- (a -> Id b) -> f a -> Id (f b)
-mapped g x = 
+mapped g x =
   let g' = getIdentity . g
       r  = g' <$> x
   in Identity $ r
@@ -161,7 +161,7 @@ set ::
   -> b
   -> t
 set = undefined
-  
+
 
 ----
 
@@ -209,16 +209,21 @@ folds ::
   -> (a -> Const b a)
   -> s
   -> Const t s
-folds f g s = 
+folds f g s =
   let g' = getConst . g
   in Const $ f g' s
   --error "todo: folds"
 
 folded ::
   Foldable f =>
-  Fold (f a) (f a) a a
-folded =
-  error "todo: folded"
+  Fold (f a) (f a) a a -- (a -> Const r a) -> (f a) -> Const r (f a)
+folded g f =
+  let
+    g' = getConst . g
+    r = foldMap g' f
+  in Const r
+
+  --error "todo: folded"
 
 ----
 
@@ -229,11 +234,14 @@ type Get r s a =
   -> Const r s
 
 get ::
-  Get a s a
+  Get a s a  -- (a -> Const a a) -> s -> Const a s
   -> s
   -> a
-get =
-  error "todo: get"
+get g s =
+  let r = g Const s
+  in getConst r
+
+  --error "todo: get"
 
 ----
 
@@ -247,24 +255,34 @@ type Traversal s t a b =
 
 -- | Traverse both sides of a pair.
 both ::
-  Traversal (a, a) (b, b) a b
-both =
-  error "todo: both"
+  Traversal (a, a) (b, b) a b  -- forall f. Applicative f => (a -> f b) -> (a, a) -> f (b, b)
+both k (f,s) =
+  let f' = k f
+      s' = k s
+  in (,) <$> f' <*> s'
+
 
 -- | Traverse the left side of @Either@.
 traverseLeft ::
-  Traversal (Either a x) (Either b x) a b
-traverseLeft =
-  error "todo: traverseLeft"
+  Traversal (Either a x) (Either b x) a b -- forall f. Applicative f => (a -> f b) -> Either a x -> f Either b x
+traverseLeft k (Left e) =
+  let r = k e
+  in Left <$> r
+traverseLeft _ (Right x) = pure $ Right x
+
+  --error "todo: traverseLeft"
 
 -- | Traverse the right side of @Either@.
 traverseRight ::
-  Traversal (Either x a) (Either x b) a b
-traverseRight =
-  error "todo: traverseRight"
+  Traversal (Either x a) (Either x b) a b -- forall f. Applicative f => (a -> f b) -> Either x a -> f Either x b
+traverseRight k (Right v)=
+  let r = k v
+  in Right <$> k v
+
+traverseRight _ (Left x) = pure . Left $ x
 
 type Traversal' a b =
-  Traversal a a b b
+  Traversal a a b b -- forall f . Applicative f => (b -> f b) -> a -> f a
 
 ----
 
@@ -290,31 +308,49 @@ type Prism s t a b =
   -> p s (f t)
 
 _Left ::
-  Prism (Either a x) (Either b x) a b
-_Left =
-  error "todo: _Left"
+  Prism (Either a x) (Either b x) a b -- forall p f . (Choice p, Applicative f) => p a (f b) -> p (Either a x) (f Either b x)
+_Left ch =
+  let r = left ch
+      r' = dimap id k r
+      k (Right v) = pure (Right v)
+      k (Left  fe) = Left <$> fe 
+  in r'
+  
 
 _Right ::
-  Prism (Either x a) (Either x b) a b 
-_Right =
-  error "todo: _Right"
+  Prism (Either x a) (Either x b) a b -- forall p f . (Choice p, Applicative f) => p a (f b) -> p (Either x a) (f Either x b)
+_Right ch =
+  let r = right ch
+      r' = dimap id k r
+      k (Right fx) = Right <$> fx
+      k (Left e) = pure (Left e)
+  in r'  
+  
 
 prism ::
   (b -> t)
   -> (s -> Either t a)
-  -> Prism s t a b
-prism =
-  error "todo: prism"
+  -> Prism s t a b  -- forall p f . (Choice p, Applicative f) => p a (f b) -> p s (f t)
+prism f g p =
+  let   
+    --p' = _Right p
+    --r' = dimap g 
+    g' s = either (error "???") (id) (g s)            
+    r = dimap g' (f <$>) p
+  in r
+  --error "todo: prism"
 
 _Just ::
-  Prism (Maybe a) (Maybe b) a b
-_Just =
-  error "todo: _Just"
+  Prism (Maybe a) (Maybe b) a b -- forall p f . (Choice p, Applicative f) => p a (f b) -> p (Maybe a) (f (Maybe b))
+_Just = dimap m (Just <$>)
+   where m (Just x) = x
+         m Nothing  = error "???"
+  --error "todo: _Just"
 
 _Nothing ::
-  Prism (Maybe a) (Maybe a) () ()
-_Nothing =
-  error "todo: _Nothing"
+  Prism (Maybe a) (Maybe a) () () -- forall p f . (Choice p, Applicative f) => p () (f ()) -> p (Maybe a) (f (Maybe a))
+_Nothing = dimap (const ()) (const Nothing <$>) 
+  --error "todo: _Nothing"
 
 setP ::
   Prism s t a b
@@ -351,8 +387,8 @@ modify ::
   -> (a -> b)
   -> s
   -> t
-modify _ _ _ =
-  error "todo: modify"
+modify l k s = getIdentity $ l (Identity . k) s
+  --error "todo: modify"
 
 -- | An alias for @modify@.
 (%~) ::
@@ -381,8 +417,8 @@ infixr 4 %~
   -> b
   -> s
   -> t
-(.~) _ _ _ =
-  error "todo: (.~)"
+(.~) l b s = getIdentity $ l (Identity . const b) s 
+  --error "todo: (.~)"
 
 infixl 5 .~
 
@@ -402,8 +438,8 @@ fmodify ::
   -> (a -> f b)
   -> s
   -> f t 
-fmodify _ _ _ =
-  error "todo: fmodify"
+fmodify l k s = l k s
+  --error "todo: fmodify"
 
 -- |
 --
@@ -418,8 +454,8 @@ fmodify _ _ _ =
   -> f b
   -> s
   -> f t
-(|=) _ _ _ =
-  error "todo: (|=)"
+(|=) l fb s = l (const fb) s
+  --error "todo: (|=)"
 
 infixl 5 |=
 
@@ -429,8 +465,10 @@ infixl 5 |=
 -- (30,"abc")
 fstL ::
   Lens (a, x) (b, x) a b
-fstL =
-  error "todo: fstL"
+fstL k (x,y)= 
+  let x' = k x
+  in (\v -> (v,y)) <$> x'
+  --error "todo: fstL"
 
 -- |
 --
@@ -438,8 +476,10 @@ fstL =
 -- (13,"abcdef")
 sndL ::
   Lens (x, a) (x, b) a b
-sndL =
-  error "todo: sndL"
+sndL k (x,y) =
+  let y' = k y
+  in (\v -> (x,v))<$> y'
+  --error "todo: sndL"
 
 -- |
 --
