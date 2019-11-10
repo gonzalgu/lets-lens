@@ -336,7 +336,9 @@ product ::
                    -- Lens ((a,c) -> f (b,d)) -> (s,q) -> f (t,r) 
 product (Lens l1) (Lens l2) =
   Lens $ \p (s,q) ->
-          undefined 
+          getAlongsideRight (l2 (\b2 -> AlongsideRight (
+          getAlongsideLeft  (l1 (\b1 -> AlongsideLeft (
+            p (b1,b2))) s ))) q)
   
 
 -- | An alias for @product@.
