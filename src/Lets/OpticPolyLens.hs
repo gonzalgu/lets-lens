@@ -469,8 +469,8 @@ intAndL =
 getSuburb ::
   Person
   -> String
-getSuburb =
-  error "todo: getSuburb"
+getSuburb = get $ suburbL |. addressL
+
 
 
 -- |
@@ -484,8 +484,8 @@ setStreet ::
   Person
   -> String
   -> Person
-setStreet =
-  error "todo: setStreet"
+setStreet = set $ streetL |. addressL
+  
 
 -- |
 --
@@ -497,8 +497,8 @@ setStreet =
 getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
-getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+getAgeAndCountry = get $ ageL *** countryL
+
 
 -- |
 --
@@ -509,8 +509,8 @@ getAgeAndCountry =
 -- (Person 28 "Mary" (Address "83 Mary Ln" "Maryland" (Locality "Some Other City" "Western Mary" "Maristan")),Address "15 Fred St" "Fredville" (Locality "Mary Mary" "Western Mary" "Maristan"))
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
-setCityAndLocality =
-  error "todo: setCityAndLocality"
+setCityAndLocality = set $ cityL |. localityL |. addressL *** localityL
+
   
 -- |
 --
