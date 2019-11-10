@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Lets.OpticPolyLens (
   Lens(..)
@@ -50,6 +51,7 @@ import Data.Set(Set)
 import qualified Data.Set as Set(insert, delete, member)
 import Lets.Data(AlongsideLeft(AlongsideLeft, getAlongsideLeft), AlongsideRight(AlongsideRight, getAlongsideRight), Identity(Identity, getIdentity), Const(Const, getConst), IntAnd(IntAnd), Person(Person), Locality(Locality), Address(Address))
 import Prelude hiding (product)
+import Data.Bool(bool)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -125,8 +127,8 @@ modify ::
   -> (a -> b)
   -> s
   -> t
-modify =
-  error "todo: modify"
+modify (Lens l) k s = getIdentity $ l (Identity . k) s
+
 
 -- | An alias for @modify@.
 (%~) ::
@@ -155,8 +157,8 @@ infixr 4 %~
   -> b
   -> s
   -> t
-(.~) =
-  error "todo: (.~)"
+(.~) l b s = modify l (const b) s
+
 
 infixl 5 .~
 
@@ -176,8 +178,8 @@ fmodify ::
   -> (a -> f b)
   -> s
   -> f t 
-fmodify =
-  error "todo: fmodify"
+fmodify (Lens l) k s = l k s
+
 
 -- |
 --
@@ -192,8 +194,8 @@ fmodify =
   -> f b
   -> s
   -> f t
-(|=) =
-  error "todo: (|=)"
+(|=) l fb s = (\b -> l .~ b $ s) <$> fb
+
 
 infixl 5 |=
 
@@ -208,9 +210,9 @@ infixl 5 |=
 --
 -- prop> let types = (x :: Int, y :: String) in setsetLaw fstL (x, y) z
 fstL ::
-  Lens (a, x) (b, x) a b
-fstL =
-  error "todo: fstL"
+  Lens (a, x) (b, x) a b -- Lens (a -> f b) -> (a,x) -> f (b,x)
+fstL = Lens $ \p (a,x) -> (,x) <$> p a 
+
 
 -- |
 --
@@ -223,9 +225,9 @@ fstL =
 --
 -- prop> let types = (x :: Int, y :: String) in setsetLaw sndL (x, y) z
 sndL ::
-  Lens (x, a) (x, b) a b
-sndL =
-  error "todo: sndL"
+  Lens (x, a) (x, b) a b -- Lens (a -> f b) -> (x,a) -> f (x,b)
+sndL = Lens $ \p (x,a) -> (x,) <$> p a 
+
 
 -- |
 --
@@ -249,9 +251,13 @@ sndL =
 mapL ::
   Ord k =>
   k
-  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)--(Maybe v -> f Maybe v) -> (Map k v) -> f (Map k v)
+mapL k = Lens $ \p m ->
+  let r = p $ Map.lookup k m
+      g x = maybe (Map.delete k m) (\v -> Map.insert k v m) x
+  in g <$> r
+  
+  
 
 -- |
 --
@@ -275,9 +281,8 @@ mapL =
 setL ::
   Ord k =>
   k
-  -> Lens (Set k) (Set k) Bool Bool
-setL =
-  error "todo: setL"
+  -> Lens (Set k) (Set k) Bool Bool --Lens (Bool -> f Bool) -> (Set k) -> f (Set k)
+setL k = Lens $ \p s -> bool (Set.insert k s) (Set.delete k s) <$> (p $ Set.member k s)
 
 -- |
 --
@@ -287,16 +292,17 @@ setL =
 -- >>> set (compose fstL sndL) ("abc", (7, "def")) 8
 -- ("abc",(8,"def"))
 compose ::
-  Lens s t a b
-  -> Lens q r s t
-  -> Lens q r a b
-compose =
-  error "todo: compose"
+  Lens s t a b    -- Lens (a -> f b) -> s -> f t
+  -> Lens q r s t -- Lens (s -> f t) -> q -> f r
+  -> Lens q r a b -- Lens (a -> f b) -> q -> f r
+compose (Lens l1) (Lens l2) =
+  Lens $ \p q -> l2 (l1 p) q
+
 
 -- | An alias for @compose@.
 (|.) ::
-  Lens s t a b
-  -> Lens q r s t
+  Lens s t a b   
+  -> Lens q r s t 
   -> Lens q r a b
 (|.) =
   compose
@@ -311,9 +317,9 @@ infixr 9 |.
 -- >>> set identity 3 4
 -- 4
 identity ::
-  Lens a b a b
-identity =
-  error "todo: identity"
+  Lens a b a b -- Lens (a -> f b) a -> f b
+identity = Lens $ \p x -> p x
+
 
 -- |
 --
