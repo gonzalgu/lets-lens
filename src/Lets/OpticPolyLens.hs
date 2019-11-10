@@ -52,6 +52,7 @@ import qualified Data.Set as Set(insert, delete, member)
 import Lets.Data(AlongsideLeft(AlongsideLeft, getAlongsideLeft), AlongsideRight(AlongsideRight, getAlongsideRight), Identity(Identity, getIdentity), Const(Const, getConst), IntAnd(IntAnd), Person(Person), Locality(Locality), Address(Address))
 import Prelude hiding (product)
 import Data.Bool(bool)
+import Data.Bifunctor (bimap)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -329,11 +330,14 @@ identity = Lens $ \p x -> p x
 -- >>> set (product fstL sndL) (("abc", 3), (4, "def")) ("ghi", "jkl")
 -- (("ghi",3),(4,"jkl"))
 product ::
-  Lens s t a b
-  -> Lens q r c d
+  Lens s t a b     -- Lens (a -> f b) -> s -> f t
+  -> Lens q r c d  -- Lens (c -> f d) -> q -> f r
   -> Lens (s, q) (t, r) (a, c) (b, d)
-product =
-  error "todo: product"
+                   -- Lens ((a,c) -> f (b,d)) -> (s,q) -> f (t,r) 
+product (Lens l1) (Lens l2) =
+  Lens $ \p (s,q) ->
+          undefined 
+  
 
 -- | An alias for @product@.
 (***) ::
@@ -362,8 +366,14 @@ choice ::
   Lens s t a b
   -> Lens q r a b
   -> Lens (Either s q) (Either t r) a b
-choice =
-  error "todo: choice"
+choice (Lens l1) (Lens l2) =
+  Lens $ \p e ->
+           case e of
+             Left s -> let r = l1 p s
+                       in Left <$> r
+             Right q -> let w = l2 p q
+                        in Right <$> w
+
 
 -- | An alias for @choice@.
 (|||) ::
