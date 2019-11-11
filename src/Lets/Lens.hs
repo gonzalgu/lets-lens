@@ -354,11 +354,12 @@ _Nothing = dimap (const ()) (const Nothing <$>)
 
 
 setP ::
-  Prism s t a b
+  Prism s t a b  --(Choice p, Applicative f) => p a (f b) -> p s (f t)
   -> s
   -> Either t a
-setP _ _ =
-  error "todo: setP"
+setP p s = undefined
+
+  --error "todo: setP"
 
 getP ::
   Prism s t a b
@@ -594,15 +595,13 @@ product ::
   Lens s t a b                          -- Functor f => (a -> f b) -> s -> f t
   -> Lens q r c d                       -- Functor f => (c -> f d) -> q -> f r
   -> Lens (s, q) (t, r) (a, c) (b, d)   -- Functor f => ((a,c) -> f (b,d)) -> (s,q) -> f(t,r)
-product l1 l2 k (s,q) = undefined
-{-
-  let
-    l1' g = l1 g s
-    l2' h = l2 h q
-    k1 = AlongsideRight <$> k
-  in undefined
-  --error "todo: product"
--}
+product l1 l2 k (s,q) =
+  getAlongsideRight (l2 (\b2 -> AlongsideRight(
+  getAlongsideLeft  (l1 (\b1 -> AlongsideLeft(
+    k (b1, b2)
+  )) s )
+  )) q)
+
 
 -- | An alias for @product@.
 (***) ::
@@ -716,8 +715,8 @@ intAndL p (IntAnd n a) =
 getSuburb ::
   Person
   -> String
-getSuburb =
-  error "todo: getSuburb"
+getSuburb = get $ suburbL |. addressL
+
 
 -- |
 --
@@ -730,8 +729,7 @@ setStreet ::
   Person
   -> String
   -> Person
-setStreet =
-  error "todo: setStreet"
+setStreet = set $ streetL |. addressL
 
 -- |
 --
@@ -743,8 +741,8 @@ setStreet =
 getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
-getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+getAgeAndCountry =  get (ageL *** countryL)
+  --error "todo: getAgeAndCountry"
 
 -- |
 --
@@ -755,8 +753,8 @@ getAgeAndCountry =
 -- (Person 28 "Mary" (Address "83 Mary Ln" "Maryland" (Locality "Some Other City" "Western Mary" "Maristan")),Address "15 Fred St" "Fredville" (Locality "Mary Mary" "Western Mary" "Maristan"))
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
-setCityAndLocality =
-  error "todo: setCityAndLocality"
+setCityAndLocality = set $ cityL |. localityL |. addressL *** localityL
+  --error "todo: setCityAndLocality"
   
 -- |
 --
@@ -768,8 +766,8 @@ setCityAndLocality =
 getSuburbOrCity ::
   Either Address Locality
   -> String
-getSuburbOrCity =
-  error "todo: getSuburbOrCity"
+getSuburbOrCity = get (suburbL ||| cityL)
+  
 
 -- |
 --
@@ -782,8 +780,8 @@ setStreetOrState ::
   Either Person Locality
   -> String
   -> Either Person Locality
-setStreetOrState =
-  error "todo: setStreetOrState"
+setStreetOrState = set $ (streetL |. addressL) ||| stateL
+  
 
 -- |
 --
@@ -796,7 +794,8 @@ modifyCityUppercase ::
   Person
   -> Person
 modifyCityUppercase =
-  error "todo: modifyCityUppercase"
+  (cityL |. localityL |. addressL) %~ (toUpper <$>)
+  
 
 -- |
 --
