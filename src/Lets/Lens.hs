@@ -156,11 +156,12 @@ mapped g x =
   --error "todo: mapped"
 
 set ::
-  Set s t a b
+  Set s t a b  -- (a -> Identity b) -> s -> Identity t
   -> s
   -> b
   -> t
-set = undefined
+set k s b = getIdentity$  k (const $ Identity b) s
+
 
 
 ----
@@ -241,7 +242,7 @@ get g s =
   let r = g Const s
   in getConst r
 
-  --error "todo: get"
+
 
 ----
 
@@ -270,7 +271,7 @@ traverseLeft k (Left e) =
   in Left <$> r
 traverseLeft _ (Right x) = pure $ Right x
 
-  --error "todo: traverseLeft"
+
 
 -- | Traverse the right side of @Either@.
 traverseRight ::
@@ -338,19 +339,19 @@ prism f g p =
     g' s = either (error "???") (id) (g s)            
     r = dimap g' (f <$>) p
   in r
-  --error "todo: prism"
+
 
 _Just ::
   Prism (Maybe a) (Maybe b) a b -- forall p f . (Choice p, Applicative f) => p a (f b) -> p (Maybe a) (f (Maybe b))
 _Just = dimap m (Just <$>)
    where m (Just x) = x
          m Nothing  = error "???"
-  --error "todo: _Just"
+
 
 _Nothing ::
   Prism (Maybe a) (Maybe a) () () -- forall p f . (Choice p, Applicative f) => p () (f ()) -> p (Maybe a) (f (Maybe a))
 _Nothing = dimap (const ()) (const Nothing <$>) 
-  --error "todo: _Nothing"
+
 
 setP ::
   Prism s t a b
@@ -388,7 +389,7 @@ modify ::
   -> s
   -> t
 modify l k s = getIdentity $ l (Identity . k) s
-  --error "todo: modify"
+
 
 -- | An alias for @modify@.
 (%~) ::
@@ -418,7 +419,7 @@ infixr 4 %~
   -> s
   -> t
 (.~) l b s = getIdentity $ l (Identity . const b) s 
-  --error "todo: (.~)"
+
 
 infixl 5 .~
 
@@ -439,7 +440,7 @@ fmodify ::
   -> s
   -> f t 
 fmodify l k s = l k s
-  --error "todo: fmodify"
+
 
 -- |
 --
@@ -455,7 +456,7 @@ fmodify l k s = l k s
   -> s
   -> f t
 (|=) l fb s = l (const fb) s
-  --error "todo: (|=)"
+
 
 infixl 5 |=
 
@@ -468,7 +469,7 @@ fstL ::
 fstL k (x,y)= 
   let x' = k x
   in (\v -> (v,y)) <$> x'
-  --error "todo: fstL"
+
 
 -- |
 --
@@ -479,7 +480,7 @@ sndL ::
 sndL k (x,y) =
   let y' = k y
   in (\v -> (x,v))<$> y'
-  --error "todo: sndL"
+
 
 -- |
 --
@@ -508,9 +509,9 @@ sndL k (x,y) =
 mapL ::
   Ord k =>
   k
-  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v) -- Functor f => (Maybe v -> f Maybe v) -> Map k v -> f (Map k v)
+mapL k f m = maybe (Map.delete k m) (\v -> Map.insert k v m) <$> (f  $ Map.lookup k m)
+
 
 -- |
 --
@@ -539,9 +540,13 @@ mapL =
 setL ::
   Ord k =>
   k
-  -> Lens (Set.Set k) (Set.Set k) Bool Bool
-setL =
-  error "todo: setL"
+  -> Lens (Set.Set k) (Set.Set k) Bool Bool -- Functor f => (Bool -> f Bool) -> (Set.Set k) -> f (Set.Set k)
+setL k f s =
+  let v = f (Set.member k s)
+      g True = Set.insert k s
+      g False = Set.delete k s
+  in g <$> v
+
 
 -- |
 --
@@ -551,11 +556,11 @@ setL =
 -- >>> set (compose fstL sndL) ("abc", (7, "def")) 8
 -- ("abc",(8,"def"))
 compose ::
-  Lens s t a b
-  -> Lens q r s t
-  -> Lens q r a b
-compose _ _ =
-  error "todo: compose"
+  Lens s t a b     -- Functor f => (a -> f b) -> s -> f t
+  -> Lens q r s t  -- Functor f => (s -> f t) -> q -> f r
+  -> Lens q r a b  -- Functor f => (a -> f b) -> q -> f r
+compose l1 l2 k q =  l2 (l1 k) q
+
 
 -- | An alias for @compose@.
 (|.) ::
@@ -575,9 +580,8 @@ infixr 9 |.
 -- >>> set identity 3 4
 -- 4
 identity ::
-  Lens a b a b
-identity =
-  error "todo: identity"
+  Lens a b a b  -- Functor f => (a -> f b) -> a -> f b
+identity k a = k a
 
 -- |
 --
@@ -587,11 +591,18 @@ identity =
 -- >>> set (product fstL sndL) (("abc", 3), (4, "def")) ("ghi", "jkl")
 -- (("ghi",3),(4,"jkl"))
 product ::
-  Lens s t a b
-  -> Lens q r c d
-  -> Lens (s, q) (t, r) (a, c) (b, d)
-product _ _ =
-  error "todo: product"
+  Lens s t a b                          -- Functor f => (a -> f b) -> s -> f t
+  -> Lens q r c d                       -- Functor f => (c -> f d) -> q -> f r
+  -> Lens (s, q) (t, r) (a, c) (b, d)   -- Functor f => ((a,c) -> f (b,d)) -> (s,q) -> f(t,r)
+product l1 l2 k (s,q) = undefined
+{-
+  let
+    l1' g = l1 g s
+    l2' h = l2 h q
+    k1 = AlongsideRight <$> k
+  in undefined
+  --error "todo: product"
+-}
 
 -- | An alias for @product@.
 (***) ::
@@ -617,11 +628,12 @@ infixr 3 ***
 -- >>> set (choice fstL sndL) (Right ("abc", 7)) 8
 -- Right ("abc",8)
 choice ::
-  Lens s t a b
-  -> Lens q r a b
-  -> Lens (Either s q) (Either t r) a b
-choice _ _ =
-  error "todo: choice"
+  Lens s t a b                           -- Functor f => (a -> f b) -> s -> f t
+  -> Lens q r a b                        -- Functor f => (a -> f b) -> q -> f r
+  -> Lens (Either s q) (Either t r) a b  -- Functor f => (a -> f b) -> Either s q -> f Either t r
+choice l1 l2 k = either (fmap Left . l1 k) (fmap Right . l2 k)  
+
+
 
 -- | An alias for @choice@.
 (|||) ::
